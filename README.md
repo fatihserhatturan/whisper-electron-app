@@ -12,6 +12,12 @@ A desktop application for transcribing audio files to text using OpenAI's Whispe
 
 ![Application Demo](./assets/demo.gif)
 
+## 📥 Download
+
+**Latest Version: v1.0.0**
+
+[**⬇️ Download for Windows (Setup.exe)**](https://github.com/fatihserhatturan/whisper-electron-app/releases/download/v1.0.0.0/FST.cpp.Setup.1.0.0.exe)
+
 ## 📋 Table of Contents
 
 - [User Guide](#-user-guide)
