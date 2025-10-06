@@ -1,0 +1,61 @@
+const translations = {
+  tr: {
+    appTitle: 'Whisper Transkripsiyon',
+    selectFile: 'Ses Dosyası Seç',
+    transcribe: 'Transkribe Et',
+    transcribing: 'İşleniyor...',
+    stop: 'Durdur',
+    output: 'Çıktı',
+    transcriptionLanguage: 'Transkripsiyon Dili',
+    noFile: 'Henüz dosya seçilmedi',
+    emptyOutput: 'Transkripsiyon çıktısı burada görünecek',
+    selectFileFirst: 'Lütfen bir ses dosyası seçin.',
+    error: 'Hata',
+    unknownError: 'Bilinmeyen hata',
+    unexpectedError: 'Beklenmeyen hata',
+    processStopped: 'İşlem sonlandı',
+    processCompleted: 'İşlem tamamlandı',
+    stoppedByUser: 'İşlem kullanıcı tarafından durduruldu',
+    noProcessToStop: 'Duracak bir işlem bulunamadı',
+    exportAs: 'Dışa Aktar',
+    exportTxt: 'TXT olarak kaydet',
+    exportDocx: 'Word olarak kaydet',
+    exportSuccess: 'Dosya başarıyla kaydedildi!',
+    exportError: 'Dosya kaydedilirken hata oluştu'
+  },
+  en: {
+    appTitle: 'Whisper Transcription',
+    selectFile: 'Select Audio File',
+    transcribe: 'Transcribe',
+    transcribing: 'Processing...',
+    stop: 'Stop',
+    output: 'Output',
+    transcriptionLanguage: 'Transcription Language',
+    noFile: 'No file selected yet',
+    emptyOutput: 'Transcription output will appear here',
+    selectFileFirst: 'Please select an audio file.',
+    error: 'Error',
+    unknownError: 'Unknown error',
+    unexpectedError: 'Unexpected error',
+    processStopped: 'Process terminated',
+    processCompleted: 'Process completed',
+    stoppedByUser: 'Process stopped by user',
+    noProcessToStop: 'No process to stop'
+  }
+};
+
+const supportedLanguages = [
+  { code: 'auto', name: { tr: 'Otomatik Algıla', en: 'Auto Detect' } },
+  { code: 'tr', name: { tr: 'Türkçe', en: 'Turkish' } },
+  { code: 'en', name: { tr: 'İngilizce', en: 'English' } },
+  { code: 'de', name: { tr: 'Almanca', en: 'German' } },
+  { code: 'es', name: { tr: 'İspanyolca', en: 'Spanish' } },
+  { code: 'fr', name: { tr: 'Fransızca', en: 'French' } },
+  { code: 'it', name: { tr: 'İtalyanca', en: 'Italian' } },
+  { code: 'pt', name: { tr: 'Portekizce', en: 'Portuguese' } },
+  { code: 'ru', name: { tr: 'Rusça', en: 'Russian' } },
+  { code: 'ar', name: { tr: 'Arapça', en: 'Arabic' } },
+  { code: 'zh', name: { tr: 'Çince', en: 'Chinese' } },
+  { code: 'ja', name: { tr: 'Japonca', en: 'Japanese' } },
+  { code: 'ko', name: { tr: 'Korece', en: 'Korean' } }
+];

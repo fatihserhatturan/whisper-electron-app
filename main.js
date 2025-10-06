@@ -1,4 +1,3 @@
-// main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -23,22 +22,17 @@ function createWindow() {
 
 app.whenReady().then(createWindow);
 
-// --- Helper: ffmpeg convert ---
 function runFfmpeg(input, out) {
   return new Promise((resolve, reject) => {
     const args = ['-y', '-i', input, '-ar', '16000', '-ac', '1', out];
     const p = spawn('ffmpeg', args, { windowsHide: true });
 
-    // store reference so we can kill it later
     currentProcesses.ffmpeg = p;
 
     p.stderr.on('data', d => {
-      // ffmpeg logs to stderr
-      // console.log('ffmpeg:', d.toString());
     });
 
     p.on('close', code => {
-      // clear ffmpeg ref
       currentProcesses.ffmpeg = null;
       if (code === 0) resolve();
       else reject(new Error('ffmpeg failed with code ' + code));
@@ -51,7 +45,6 @@ function runFfmpeg(input, out) {
   });
 }
 
-// --- Helper: Get audio duration ---
 function getAudioDuration(filePath) {
   return new Promise((resolve, reject) => {
     const args = ['-i', filePath, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'csv=p=0'];
@@ -82,25 +75,21 @@ function killProcessSafely(p) {
     if (!p || p.killed) return resolve(false);
 
     try {
-      // first try graceful kill
       p.kill();
     } catch (e) {
       // ignore
     }
 
-    // wait short süre, sonra zorla sonlandır (Windows için taskkill)
     const pid = p.pid;
     setTimeout(() => {
       if (p && !p.killed) {
         try {
-          // Windows: taskkill
           if (process.platform === 'win32' && pid) {
             const killer = spawn('taskkill', ['/PID', String(pid), '/F', '/T']);
             killer.on('close', () => resolve(true));
             killer.on('error', () => resolve(true));
             return;
           }
-          // Unix-like: kill -9
           p.kill('SIGKILL');
         } catch (e) {
           // ignore
@@ -111,7 +100,6 @@ function killProcessSafely(p) {
   });
 }
 
-// --- IPC: open file dialog ---
 ipcMain.handle('dialog:openFile', async () => {
   const res = await dialog.showOpenDialog({
     properties: ['openFile'],
@@ -122,7 +110,6 @@ ipcMain.handle('dialog:openFile', async () => {
 });
 
 ipcMain.handle('stop-transcribe', async (evt) => {
-  // if no processes, return false
   const ffmpegProc = currentProcesses.ffmpeg;
   const whisperProc = currentProcesses.whisper;
   let stoppedAny = false;
@@ -138,7 +125,6 @@ ipcMain.handle('stop-transcribe', async (evt) => {
     stoppedAny = true;
   }
 
-  // notify rendererlara işlem iptali
   BrowserWindow.getAllWindows().forEach(w => {
     try {
       w.webContents.send('transcript-end', { success: false, error: 'stopped by user' });
@@ -148,8 +134,7 @@ ipcMain.handle('stop-transcribe', async (evt) => {
   return { stopped: stoppedAny };
 });
 
-// --- IPC: transcribe file ---
-ipcMain.handle('transcribe-file', async (evt, filePath) => {
+ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
   try {
     const whisperCliPath = path.join(__dirname, 'native', process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli');
     const modelPath = path.join(__dirname, 'native', 'models', 'ggml-small.bin');
@@ -165,24 +150,22 @@ ipcMain.handle('transcribe-file', async (evt, filePath) => {
     const base = path.basename(filePath, path.extname(filePath));
     const wavPath = path.join(tmpDir, `${base}-${Date.now()}.wav`);
 
-    // 1) Get audio duration first
     let totalDuration = 0;
     try {
       totalDuration = await getAudioDuration(filePath);
       console.log('Audio duration:', totalDuration, 'seconds');
-
-      // Send total duration to renderer
       evt.sender.send('audio-duration', totalDuration);
     } catch (err) {
       console.warn('Could not get audio duration:', err);
     }
 
-    // 2) convert to wav (ffmpeg)
     await runFfmpeg(filePath, wavPath);
 
-    // 3) spawn whisper-cli and stream stdout chunks to renderer
     return await new Promise((resolve, reject) => {
-      const args = ['-m', modelPath, '-f', wavPath, '-l', 'tr'];
+      const args = language === 'auto'
+        ? ['-m', modelPath, '-f', wavPath]
+        : ['-m', modelPath, '-f', wavPath, '-l', language];
+
       const env = Object.assign({}, process.env, { OMP_NUM_THREADS: String(4) });
       const p = spawn(whisperCliPath, args, {
         cwd: path.dirname(whisperCliPath),
@@ -191,7 +174,6 @@ ipcMain.handle('transcribe-file', async (evt, filePath) => {
         shell: false
       });
 
-      // save reference so stop button can kill it
       currentProcesses.whisper = p;
 
       let fullText = '';
@@ -201,17 +183,12 @@ ipcMain.handle('transcribe-file', async (evt, filePath) => {
         const s = d.toString();
         fullText += s;
 
-        // Extract timestamp from output to calculate progress
-        // Format: [00:01:23.456 --> 00:01:28.789]
         const timestampMatch = s.match(/\[(\d{2}):(\d{2}):(\d{2})\.\d{3}\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.\d{3}\]/);
         if (timestampMatch && totalDuration > 0) {
-          // Parse the end timestamp
           const hours = parseInt(timestampMatch[4]);
           const minutes = parseInt(timestampMatch[5]);
           const seconds = parseInt(timestampMatch[6]);
           const currentTime = hours * 3600 + minutes * 60 + seconds;
-
-          // Calculate progress percentage
           const progress = Math.min(Math.round((currentTime / totalDuration) * 100), 100);
 
           try {
@@ -237,7 +214,6 @@ ipcMain.handle('transcribe-file', async (evt, filePath) => {
       });
 
       p.on('close', (code) => {
-        // clear ref
         currentProcesses.whisper = null;
 
         try { fs.unlinkSync(wavPath); } catch (e) {}
@@ -253,5 +229,80 @@ ipcMain.handle('transcribe-file', async (evt, filePath) => {
 
   } catch (err) {
     return { success: false, error: err.message || String(err) };
+  }
+});
+
+ipcMain.handle('export-txt', async (evt, text) => {
+  try {
+    const result = await dialog.showSaveDialog({
+      title: 'Metin Dosyası Olarak Kaydet',
+      defaultPath: `transkript-${Date.now()}.txt`,
+      filters: [
+        { name: 'Text Files', extensions: ['txt'] }
+      ]
+    });
+
+    if (result.canceled) return { success: false, canceled: true };
+
+    fs.writeFileSync(result.filePath, text, 'utf-8');
+    return { success: true, path: result.filePath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('export-docx', async (evt, text) => {
+  try {
+    const result = await dialog.showSaveDialog({
+      title: 'Word Belgesi Olarak Kaydet',
+      defaultPath: `transkript-${Date.now()}.docx`,
+      filters: [
+        { name: 'Word Documents', extensions: ['docx'] }
+      ]
+    });
+
+    if (result.canceled) return { success: false, canceled: true };
+
+    const createDocx = (text) => {
+      const JSZip = require('jszip');
+      const zip = new JSZip();
+
+      zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+
+      zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+      zip.folder('word').folder('_rels').file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`);
+
+      const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const paragraphs = escapedText.split('\n').map(line =>
+        `<w:p><w:r><w:t xml:space="preserve">${line}</w:t></w:r></w:p>`
+      ).join('');
+
+      zip.folder('word').file('document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${paragraphs}
+  </w:body>
+</w:document>`);
+
+      return zip.generateAsync({ type: 'nodebuffer' });
+    };
+
+    const buffer = await createDocx(text);
+    fs.writeFileSync(result.filePath, buffer);
+
+    return { success: true, path: result.filePath };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
