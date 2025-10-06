@@ -8,6 +8,10 @@ A desktop application for transcribing audio files to text using OpenAI's Whispe
 
 ---
 
+## 🎥 Demo
+
+![Application Demo](./assets/demo.gif)
+
 ## 📋 Table of Contents
 
 - [User Guide](#-user-guide)
@@ -674,7 +678,7 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## 📧 Support
 
-For support, please contact: [your-email@example.com]
+For support, please contact: [fatihserhatturan@gmail.com]
 
 ---
 
