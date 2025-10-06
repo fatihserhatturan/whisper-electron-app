@@ -8,6 +8,24 @@ let currentProcesses = {
   whisper: null
 };
 
+function getFfmpegPath() {
+  try {
+    const ffmpegStatic = require('ffmpeg-static');
+    return ffmpegStatic.replace('app.asar', 'app.asar.unpacked');
+  } catch (e) {
+    return 'ffmpeg';
+  }
+}
+
+function getFfprobePath() {
+  try {
+    const ffprobeStatic = require('ffprobe-static');
+    return ffprobeStatic.path.replace('app.asar', 'app.asar.unpacked');
+  } catch (e) {
+    return 'ffprobe';
+  }
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 900,
@@ -15,17 +33,35 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-    }
+    },
+    icon: path.join(__dirname, 'assets', 'icon.ico')
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  if (!app.isPackaged) {
+    win.webContents.openDevTools();
+  }
 }
 
 app.whenReady().then(createWindow);
 
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+
 function runFfmpeg(input, out) {
   return new Promise((resolve, reject) => {
+    const ffmpegPath = getFfmpegPath();
     const args = ['-y', '-i', input, '-ar', '16000', '-ac', '1', out];
-    const p = spawn('ffmpeg', args, { windowsHide: true });
+    const p = spawn(ffmpegPath, args, { windowsHide: true });
 
     currentProcesses.ffmpeg = p;
 
@@ -47,8 +83,9 @@ function runFfmpeg(input, out) {
 
 function getAudioDuration(filePath) {
   return new Promise((resolve, reject) => {
+    const ffprobePath = getFfprobePath();
     const args = ['-i', filePath, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'csv=p=0'];
-    const p = spawn('ffprobe', args, { windowsHide: true });
+    const p = spawn(ffprobePath, args, { windowsHide: true });
 
     let output = '';
     p.stdout.on('data', d => {
@@ -103,7 +140,7 @@ function killProcessSafely(p) {
 ipcMain.handle('dialog:openFile', async () => {
   const res = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }]
+    filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac'] }]
   });
   if (res.canceled) return null;
   return res.filePaths[0];
@@ -136,14 +173,23 @@ ipcMain.handle('stop-transcribe', async (evt) => {
 
 ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
   try {
-    const whisperCliPath = path.join(__dirname, 'native', process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli');
-    const modelPath = path.join(__dirname, 'native', 'models', 'ggml-small.bin');
+    const isDev = !app.isPackaged;
+    const basePath = isDev
+      ? __dirname
+      : process.resourcesPath;
+
+    const whisperCliPath = path.join(basePath, 'native', 'whisper-cli.exe');
+    const modelPath = path.join(basePath, 'native', 'models', 'ggml-small.bin');
+
+    console.log('Whisper CLI Path:', whisperCliPath);
+    console.log('Model Path:', modelPath);
+    console.log('Is Packaged:', app.isPackaged);
 
     if (!fs.existsSync(whisperCliPath)) {
-      throw new Error(`whisper-cli not found at ${whisperCliPath}.`);
+      throw new Error(`whisper-cli bulunamadı: ${whisperCliPath}`);
     }
     if (!fs.existsSync(modelPath)) {
-      throw new Error(`Model bulunamadı: ${modelPath}.`);
+      throw new Error(`Model bulunamadı: ${modelPath}`);
     }
 
     const tmpDir = app.getPath('temp');
@@ -228,6 +274,7 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
     });
 
   } catch (err) {
+    console.error('Transcription error:', err);
     return { success: false, error: err.message || String(err) };
   }
 });

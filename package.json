@@ -1,19 +1,85 @@
 {
   "name": "whisper-electron-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "Whisper Transcription Desktop App",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "electron-builder --win"
   },
   "keywords": [],
-  "author": "",
+  "author": "Fatih Serhat Turan",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^38.2.1"
+    "electron": "^38.2.1",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
     "jszip": "^3.10.1"
+  },
+  "build": {
+    "appId": "com.whisper.transcriber",
+    "productName": "FST.cpp",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "native/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/README.md",
+      "!node_modules/**/test/**",
+      "!node_modules/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "native",
+        "to": "native",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**/*",
+      "node_modules/ffprobe-static/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FST.cpp",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "deleteAppDataOnUninstall": true,
+      "license": "LICENSE.txt"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
+    }
   }
 }
