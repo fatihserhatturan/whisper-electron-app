@@ -182,21 +182,9 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
     const whisperCliPath = path.join(basePath, 'native', 'whisper-cli.exe');
     const modelPath = path.join(basePath, 'native', 'models', 'ggml-small.bin');
 
-    console.log('Whisper CLI Path:', whisperCliPath);
-    console.log('Model Path:', modelPath);
-    console.log('Original File Path:', filePath);  // ← Orijinal yolu göster
-
-    if (!fs.existsSync(whisperCliPath)) {
-      throw new Error(`whisper-cli bulunamadı: ${whisperCliPath}`);
-    }
-    if (!fs.existsSync(modelPath)) {
-      throw new Error(`Model bulunamadı: ${modelPath}`);
-    }
-
     const tmpDir = app.getPath('temp');
 
     const originalName = path.basename(filePath, path.extname(filePath));
-    console.log('Original filename:', originalName);
 
     const safeName = slugify(originalName, {
       lowercase: false,
@@ -205,12 +193,10 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
       trim: true
     });
 
-    console.log('Safe filename:', safeName);
 
     const finalName = safeName || 'audio';
     const wavPath = path.join(tmpDir, `${finalName}-${Date.now()}.wav`);
 
-    console.log('WAV Path:', wavPath);
 
     let totalDuration = 0;
     try {
@@ -224,9 +210,9 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
     await runFfmpeg(filePath, wavPath);
 
     return await new Promise((resolve, reject) => {
-      const args = language === 'auto'
-        ? ['-m', modelPath, '-f', wavPath]
-        : ['-m', modelPath, '-f', wavPath, '-l', language];
+const args = language === 'auto'
+  ? ['-m', modelPath, '-f', wavPath, '--no-gpu']
+  : ['-m', modelPath, '-f', wavPath, '-l', language, '--no-gpu'];
 
       const env = Object.assign({}, process.env, { OMP_NUM_THREADS: String(4) });
       const p = spawn(whisperCliPath, args, {
@@ -263,11 +249,17 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
         } catch (e) {}
       });
 
-      p.stderr.on('data', (d) => {
-        const s = d.toString();
-        stderr += s;
-        try { evt.sender.send('transcript-stderr', s); } catch (e) {}
-      });
+p.stderr.on('data', (d) => {
+  const s = d.toString('utf8');
+  stderr += s;
+
+  if (s.includes('use gpu')) {
+    console.log('CPU/GPU DETECTION:');
+    console.log(s);
+  }
+
+  try { evt.sender.send('transcript-stderr', s); } catch (e) {}
+});
 
       p.on('error', (err) => {
         currentProcesses.whisper = null;

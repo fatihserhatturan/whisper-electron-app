@@ -1,6 +1,6 @@
 {
   "name": "whisper-electron-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Whisper Transcription Desktop App",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,11 @@
     "build": "electron-builder --win"
   },
   "keywords": [],
-  "author": "Fatih Serhat Turan",
+    "author": {
+    "name": "Fatih Serhat Turan",
+    "email": "fatihserhatturan@gmail.com",
+    "url": "https://github.com/fatihserhatturan"
+  },
   "license": "ISC",
   "devDependencies": {
     "electron": "^38.2.1",
@@ -21,8 +25,9 @@
     "transliteration": "^2.3.5"
   },
   "build": {
-    "appId": "com.whisper.transcriber",
+       "appId": "com.fst.whispertranscriber",
     "productName": "FST.cpp",
+    "copyright": "Copyright © 2025 Fatih Serhat Turan",
     "directories": {
       "output": "dist"
     },

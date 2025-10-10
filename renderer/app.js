@@ -1,4 +1,3 @@
-// app.js
 const { useState, useEffect, useRef } = React;
 
 function App() {
@@ -36,7 +35,6 @@ function App() {
         setProgress(percent);
       }
 
-      console.log('whisper process info:', chunk);
     };
 
     const handleTranscriptEnd = (info) => {

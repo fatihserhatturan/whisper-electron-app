@@ -40,7 +40,12 @@ const translations = {
     processStopped: 'Process terminated',
     processCompleted: 'Process completed',
     stoppedByUser: 'Process stopped by user',
-    noProcessToStop: 'No process to stop'
+    noProcessToStop: 'No process to stop',
+    exportAs: 'Export As',
+    exportTxt: 'Save as TXT',
+    exportDocx: 'Save as Word',
+    exportSuccess: 'File saved successfully!',
+    exportError: 'Error saving file'
   }
 };
 
