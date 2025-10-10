@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { slugify } = require('transliteration');
 
 let currentProcesses = {
   ffmpeg: null,
@@ -183,7 +184,7 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
 
     console.log('Whisper CLI Path:', whisperCliPath);
     console.log('Model Path:', modelPath);
-    console.log('Is Packaged:', app.isPackaged);
+    console.log('Original File Path:', filePath);  // ← Orijinal yolu göster
 
     if (!fs.existsSync(whisperCliPath)) {
       throw new Error(`whisper-cli bulunamadı: ${whisperCliPath}`);
@@ -193,8 +194,23 @@ ipcMain.handle('transcribe-file', async (evt, filePath, language = 'tr') => {
     }
 
     const tmpDir = app.getPath('temp');
-    const base = path.basename(filePath, path.extname(filePath));
-    const wavPath = path.join(tmpDir, `${base}-${Date.now()}.wav`);
+
+    const originalName = path.basename(filePath, path.extname(filePath));
+    console.log('Original filename:', originalName);
+
+    const safeName = slugify(originalName, {
+      lowercase: false,
+      separator: '_',
+      ignore: [],
+      trim: true
+    });
+
+    console.log('Safe filename:', safeName);
+
+    const finalName = safeName || 'audio';
+    const wavPath = path.join(tmpDir, `${finalName}-${Date.now()}.wav`);
+
+    console.log('WAV Path:', wavPath);
 
     let totalDuration = 0;
     try {

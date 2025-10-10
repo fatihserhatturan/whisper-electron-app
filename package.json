@@ -17,7 +17,8 @@
   "dependencies": {
     "ffmpeg-static": "^5.2.0",
     "ffprobe-static": "^3.1.0",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "transliteration": "^2.3.5"
   },
   "build": {
     "appId": "com.whisper.transcriber",
